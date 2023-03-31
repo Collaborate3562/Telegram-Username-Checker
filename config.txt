@@ -1,0 +1,2 @@
+notify_duration=10
+notify_message=ON
