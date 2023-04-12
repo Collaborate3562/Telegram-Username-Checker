@@ -32,7 +32,7 @@ async def check_username(username: str):
         if result.username == username:
             return True  # username already taken
     except UsernameInvalidError:
-        return True  # username is available
+        return False  # username is available
     except UsernameOccupiedError:
         return True  # username already taken
     except Exception as e:
@@ -60,9 +60,7 @@ def start_check_usernames():
         for username in user_list:
             with client:
                 is_available = client.loop.run_until_complete(check_username(username))
-                print(username, is_available)
-                print(isOn)
-                text = f'The username "{username}" is {"available" if is_available else "unavailable"}'
+                text = f'The username "{username}" is {"available" if not is_available else "unavailable"}'
                 if is_available:
                     res = send_message(text)
 
@@ -77,7 +75,8 @@ def start_check_usernames():
                         print('Message sent successfully!')
                     else:
                         print(f'Error {res.status_code}: {res.text}')
-
+            
+            time.sleep(duration)
         time.sleep(duration)
 
 if __name__ == '__main__':
