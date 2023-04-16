@@ -1,12 +1,18 @@
-from telethon import TelegramClient
-from telethon.errors.rpcerrorlist import UsernameOccupiedError, UsernameInvalidError
+from telethon import TelegramClient, sync
+from telethon import functions, types
+from telethon import errors
 from dotenv.main import load_dotenv
 import os
+import configparser
 import requests
-import threading
 import time
 
+AVAILABLE, UNAVAILABLE, INVALID, RATELIMIT, ERROR = range(5)
+
 load_dotenv()
+
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 API_ID = os.environ['API_ID']
 API_HASH = os.environ['API_HASH']
@@ -14,6 +20,7 @@ BOT_TOKEN = os.environ['BOT_TOKEN']
 CHAT_ID = os.environ['CHAT_ID']
 
 client = TelegramClient('validator_session', int(API_ID), API_HASH)
+client.start()
 
 def read_file(filename: str) -> list:
     # Open the file in read mode
@@ -26,18 +33,19 @@ def read_file(filename: str) -> list:
 
     return lines
 
-async def check_username(username: str):
-    try:
-        result = await client.get_entity(username)
-        if result.username == username:
-            return True  # username already taken
-    except UsernameInvalidError:
-        return False  # username is available
-    except UsernameOccupiedError:
-        return True  # username already taken
-    except Exception as e:
-        print(e)
-        return False  # error occurred, assume username is taken
+def userLookup(account: str) -> int:
+    try: 
+        result = client(functions.account.CheckUsernameRequest(username=account))
+        if result == True:
+            return AVAILABLE
+        else:
+            return UNAVAILABLE
+    except errors.FloodWaitError as fW:
+        return RATELIMIT
+    except errors.UsernameInvalidError as uI:
+        return INVALID
+    except errors.rpcbaseerrors.BadRequestError as bR:
+        return ERROR
 
 def send_message(text) -> any:
     url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
@@ -48,35 +56,47 @@ def send_message(text) -> any:
 def start_check_usernames():
     while True:
         user_list = read_file('users.txt')
-        setting = read_file('config.txt')
 
-        duration = int(setting[0].split('=')[1])
+        duration = int(config.get('default', 'notify_duration'))
+        isTurned = config.get('default', 'notify_message')
+
         isOn = False
-        if setting[1].split('=')[1] == 'ON':
+        if isTurned == 'ON':
             isOn = True
         else:
             isOn = False
 
         for username in user_list:
-            with client:
-                is_available = client.loop.run_until_complete(check_username(username))
-                text = f'The username "{username}" is {"available" if not is_available else "unavailable"}'
-                if is_available:
-                    res = send_message(text)
+            res = userLookup(username)
+            if res == AVAILABLE:
+                text = f'The telegram username "{username}" is available'
+                response = send_message(text)
 
-                    if res.status_code == 200:
-                        print('Message sent successfully!')
-                    else:
-                        print(f'Error {res.status_code}: {res.text}')
-                elif not is_available and isOn:
-                    res = send_message(text)
+                if response.status_code == 200:
+                    print(f'Message sent successfully!\n{text}')
+                else:
+                    print(f'Error {response.status_code}: {response.text}')
+            elif res == UNAVAILABLE:
+                text = f'The telegram username "{username}" is not available'
+                response = send_message(text)
 
-                    if res.status_code == 200:
-                        print('Message sent successfully!')
+                if response.status_code == 200:
+                    print(f'Message sent successfully!\n{text}')
+                else:
+                    print(f'Error {response.status_code}: {response.text}')
+            elif res == RATELIMIT:
+                text = 'Hit the rate limit, waiting'
+            elif res == INVALID:
+                text = f'The telegram username "{username}" is invalid'
+                if isOn:
+                    response = send_message(text)
+
+                    if response.status_code == 200:
+                        print(f'Message sent successfully!\n{text}')
                     else:
-                        print(f'Error {res.status_code}: {res.text}')
-            
+                        print(f'Error {response.status_code}: {response.text}')
             time.sleep(duration)
+
         time.sleep(duration)
 
 if __name__ == '__main__':

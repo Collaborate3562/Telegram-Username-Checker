@@ -1,2 +1,0 @@
-notify_duration=5
-notify_message=OFF
