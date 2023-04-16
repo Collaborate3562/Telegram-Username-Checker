@@ -78,12 +78,6 @@ def start_check_usernames():
                     print(f'Error {response.status_code}: {response.text}')
             elif res == UNAVAILABLE:
                 text = f'The telegram username "{username}" is not available'
-                response = send_message(text)
-
-                if response.status_code == 200:
-                    print(f'Message sent successfully!\n{text}')
-                else:
-                    print(f'Error {response.status_code}: {response.text}')
             elif res == RATELIMIT:
                 text = 'Hit the rate limit, waiting'
             elif res == INVALID:
