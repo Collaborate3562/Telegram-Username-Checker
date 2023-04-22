@@ -3,6 +3,7 @@ from telethon import functions, types
 from telethon import errors
 from dotenv.main import load_dotenv
 import os
+import datetime
 import configparser
 import requests
 import time
@@ -68,25 +69,33 @@ def start_check_usernames():
 
         for username in user_list:
             res = userLookup(username)
+            current_time = datetime.datetime.now()
+            formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
             if res == AVAILABLE:
-                text = f'The telegram username "{username}" is available'
+                text = f'"{username}" is available'
                 response = send_message(text)
 
                 if response.status_code == 200:
-                    print(f'Message sent successfully!\n{text}')
+                    print(f'[{formatted_time}] {text}')
                 else:
                     print(f'Error {response.status_code}: {response.text}')
             elif res == UNAVAILABLE:
-                text = f'The telegram username "{username}" is not available'
+                text = f'"{username}" is unavailable'
+                response = send_message(text)
+
+                if response.status_code == 200:
+                    print(f'[{formatted_time}] {text}')
+                else:
+                    print(f'Error {response.status_code}: {response.text}')
             elif res == RATELIMIT:
                 text = 'Hit the rate limit, waiting'
             elif res == INVALID:
-                text = f'The telegram username "{username}" is invalid'
+                text = f'"{username}" is invalid'
                 if isOn:
                     response = send_message(text)
 
                     if response.status_code == 200:
-                        print(f'Message sent successfully!\n{text}')
+                        print(f'[{formatted_time}] {text}')
                     else:
                         print(f'Error {response.status_code}: {response.text}')
             time.sleep(duration)
@@ -94,4 +103,5 @@ def start_check_usernames():
         time.sleep(duration)
 
 if __name__ == '__main__':
+    print('Starting....')
     start_check_usernames()
