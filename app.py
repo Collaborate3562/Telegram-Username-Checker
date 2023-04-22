@@ -81,12 +81,7 @@ def start_check_usernames():
                     print(f'Error {response.status_code}: {response.text}')
             elif res == UNAVAILABLE:
                 text = f'"{username}" is unavailable'
-                response = send_message(text)
-
-                if response.status_code == 200:
-                    print(f'[{formatted_time}] {text}')
-                else:
-                    print(f'Error {response.status_code}: {response.text}')
+                print(f'[{formatted_time}] {text}')
             elif res == RATELIMIT:
                 text = 'Hit the rate limit, waiting'
             elif res == INVALID:
